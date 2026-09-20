@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rugby — Trajets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Covoiturage · Saison 2026 – 2027</div>
+    <h1>Rugby<span>.</span></h1>
+  </header>
+
+  <nav class="tabs">
+    <a href="index.html" class="active">Planning</a>
+    <a href="modifier.html">Modifier</a>
+  </nav>
+
+  <div class="subtitle">Prochain trajet</div>
+  
+  <div id="nextTripZone"></div>
+
+  <div class="nav">
+    <button id="prevBtn">← Précédent</button>
+    <input type="date" id="datePicker">
+    <button id="nextBtn">Suivant →</button>
+  </div>
+
+  <div id="pickedDayZone"></div>
+
+  <div class="touchline"><span></span><span></span><span></span><span></span><span></span></div>
+
+  <footer>
+    Page privée — merci de ne pas partager en dehors du groupe<br>
+    Made with ❤️ by Whit3Roro
+  </footer>
+</div>
+
+<script>
+// ---------- Configuration du CSV Google Sheets ----------
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8dYSjN3mbcAT3niB4rpQTKrZu3p9yQkKBVLMyFsSeirgaQKh05WtnpwrYGT_4l-ujeIBh6XrtWmLd/pub?output=csv";
+let overridesMap = {};
+
+// Parser de lignes CSV
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  if (lines.length <= 1) return [];
+  
+  return lines.slice(1).map(line => {
+    const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*)/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      if (match[1] !== undefined) {
+        matches.push(match[1].replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+      }
+    }
+    return {
+      date: matches[1] || "",
+      trajet: matches[2] || "",
+      personne: matches[3] || ""
+    };
+  });
+}
+
+// Normaliser la date au format YYYY-MM-DD depuis le format Jour/Mois/Année (DD/MM/YYYY)
+function normalizeDateStr(rawDate) {
+  if (!rawDate) return "";
+  const clean = rawDate.trim().split(' ')[0];
+  if (clean.includes('/')) {
+    const parts = clean.split('/');
+    if (parts.length === 3) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+      return `${y}-${m}-${d}`;
+    }
+  }
+  return clean;
+}
+
+// Récupération des données publiées depuis le Sheets
+async function fetchOverrides() {
+  try {
+    const response = await fetch(CSV_URL);
+    if (!response.ok) return;
+    const text = await response.text();
+    const records = parseCSV(text);
+    
+    overridesMap = {};
+    records.forEach(r => {
+      const normDate = normalizeDateStr(r.date);
+      if (normDate && r.trajet && r.personne) {
+        const key = `${normDate}_${r.trajet.trim().toLowerCase()}`;
+        overridesMap[key] = r.personne.trim();
+      }
+    });
+
+    renderNextTrip();
+    renderPickedDay(currentPicked);
+  } catch (err) {
+    console.warn("Impossible de charger les modifications CSV :", err);
+  }
+}
+
+// ---------- Règles du planning ----------
+const SEASON_START = new Date(2026, 8, 2);   // 2 septembre 2026
+const SEASON_END   = new Date(2027, 5, 30);  // 30 juin 2027
+
+const VACANCES = [
+  [new Date(2026,9,17),  new Date(2026,10,1)],  // Toussaint
+  [new Date(2026,11,19), new Date(2027,0,3)],   // Noël
+  [new Date(2027,1,20),  new Date(2027,2,7)],   // Hiver zone B
+  [new Date(2027,3,17),  new Date(2027,4,2)],   // Printemps zone B
+];
+
+const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+const MOIS  = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+
+function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function inVacances(d){
+  const t = stripTime(d).getTime();
+  return VACANCES.some(([a,b]) => t >= stripTime(a).getTime() && t <= stripTime(b).getTime());
+}
+function isTrainingDay(d){
+  const t = stripTime(d).getTime();
+  if (t < stripTime(SEASON_START).getTime() || t > stripTime(SEASON_END).getTime()) return false;
+  const wd = d.getDay();
+  if (wd !== 1 && wd !== 3) return false;
+  if (inVacances(d)) return false;
+  return true;
+}
+function isoWeek(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - day + 3);
+  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(),0,4));
+  const diff = (dt - firstThursday) / 86400000;
+  return 1 + Math.round(diff/7);
+}
+function wednesdayIndex(d){
+  let idx = 0;
+  let cur = new Date(SEASON_START);
+  while (cur.getTime() < stripTime(d).getTime()){
+    if (cur.getDay() === 3 && !inVacances(cur) && cur >= SEASON_START) idx++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return idx;
+}
+
+const ROTATION_MERCREDI = ["Marc", "Sophie", "Camille"];
+
+// Rotation du goûter du lundi (dans l'ordre de passage)
+const ROTATION_GOUTER = ["Lucas", "Léo", "Hugo", "Louis", "Arthur"];
+
+// Compte le nombre de lundis d'entraînement écoulés depuis le début de saison (avant d, exclu)
+function mondayIndex(d){
+  let idx = 0;
+  let cur = new Date(SEASON_START);
+  while (cur.getTime() < stripTime(d).getTime()){
+    if (cur.getDay() === 1 && !inVacances(cur) && cur >= SEASON_START) idx++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return idx;
+}
+
+function gouterIndexFor(d){
+  return ((mondayIndex(d) - 1) % ROTATION_GOUTER.length + ROTATION_GOUTER.length) % ROTATION_GOUTER.length;
+}
+
+function getTripInfo(d){
+  if (!isTrainingDay(d)) return null;
+  const wd = d.getDay();
+  if (wd === 1){
+    const week = isoWeek(d);
+    const paire = week % 2 === 0;
+    return {
+      type: "lundi",
+      week,
+      paire,
+      aller: { time:"18h15", driver:"Julien", kids:"Hugo, Arthur, Léo, Lucas, Louis", labelKey:"Lundi aller" },
+      retours: [
+        { time:"19h15", driver: paire ? "Alex" : "Sophie", kids:"Hugo, Arthur, Léo", label:"Groupe 1", labelKey:"Lundi retour groupe 1" },
+        { time:"19h15", driver: paire ? "Marc" : "Camille", kids:"Lucas, Louis, Gabriel", label:"Groupe 2", labelKey:"Lundi retour groupe 2" }
+      ],
+      gouter: { child: ROTATION_GOUTER[gouterIndexFor(d)], labelKey:"Lundi goûter" }
+    };
+  } else {
+    const idx = wednesdayIndex(d);
+    return {
+      type: "mercredi",
+      week: isoWeek(d),
+      aller: { time:"17h15", driver:"Élodie", kids:"Hugo, Lucas, Louis, Gabriel", labelKey:"Mercredi aller" },
+      retours: [
+        { time:"18h45", driver: ROTATION_MERCREDI[idx % 3], kids:"Hugo, Lucas, Louis, Gabriel", label:null, labelKey:"Mercredi retour" }
+      ]
+    };
+  }
+}
+
+function findNextTrainingDay(from){
+  let d = stripTime(from);
+  for (let i=0; i<21; i++){
+    if (isTrainingDay(d)) return d;
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1);
+  }
+  return null;
+}
+function findPrevTrainingDay(from){
+  let d = stripTime(from);
+  for (let i=0; i<21; i++){
+    if (isTrainingDay(d)) return d;
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate()-1);
+  }
+  return null;
+}
+
+function fmtLong(d){
+  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+function daysBetween(a,b){
+  return Math.round((stripTime(b) - stripTime(a)) / 86400000);
+}
+
+function renderTrip(info, container, {compact=false} = {}){
+  const dateStr = toInputValue(info.date);
+  const label = info.type === "lundi" ? "Entraînement du lundi" : "Entraînement du mercredi";
+  
+  let html = `<div class="hero-label">${label}</div>`;
+  html += `<div class="hero-date">${fmtLong(info.date)}</div>`;
+  html += `<div class="badge-row"><span class="week-badge">S${info.week}${info.type==='lundi' ? (info.paire ? ' · paire' : ' · impaire') : ''}</span>`;
+  if (!compact) html += `<span class="countdown">${info.countdownText || ''}</span>`;
+  html += `</div>`;
+
+  const keyAller = `${dateStr}_${info.aller.labelKey.toLowerCase()}`;
+  const driverAller = overridesMap[keyAller] || info.aller.driver;
+  const isOverriddenAller = Boolean(overridesMap[keyAller]);
+
+  html += `<div class="trip">
+    <div class="trip-time">Aller · ${info.aller.time}</div>
+    <div class="trip-title ${isOverriddenAller ? 'has-override' : ''}">
+      ${driverAller} ${isOverriddenAller ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+    </div>
+    <div class="trip-kids">${info.aller.kids}</div>
+  </div>`;
+
+  if (info.gouter){
+    const keyGouter = `${dateStr}_${info.gouter.labelKey.toLowerCase()}`;
+    const childGouter = overridesMap[keyGouter] || info.gouter.child;
+    const isOverriddenGouter = Boolean(overridesMap[keyGouter]);
+
+    html += `<div class="snack">
+      <div class="snack-label">🍪 Goûter</div>
+      <div class="snack-title ${isOverriddenGouter ? 'has-override' : ''}">
+        ${childGouter} ${isOverriddenGouter ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+      </div>
+    </div>`;
+  }
+
+  info.retours.forEach(r => {
+    const keyRetour = `${dateStr}_${r.labelKey.toLowerCase()}`;
+    const driverRetour = overridesMap[keyRetour] || r.driver;
+    const isOverriddenRetour = Boolean(overridesMap[keyRetour]);
+
+    html += `<div class="trip retour">
+      <div class="trip-time">Retour · ${r.time}${r.label ? ' · '+r.label : ''}</div>
+      <div class="trip-title ${isOverriddenRetour ? 'has-override' : ''}">
+        ${driverRetour} ${isOverriddenRetour ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+      </div>
+      <div class="trip-kids">${r.kids}</div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderNextTrip(){
+  const zone = document.getElementById('nextTripZone');
+  const today = stripTime(new Date());
+  const nextDay = findNextTrainingDay(today);
+  if (!nextDay){
+    zone.innerHTML = `<div class="hero"><div class="hero-label">Prochain entraînement</div><div class="hero-date">Aucun trouvé dans les 3 prochaines semaines</div></div>`;
+    return;
+  }
+  const info = getTripInfo(nextDay);
+  info.date = nextDay;
+  const delta = daysBetween(today, nextDay);
+  info.countdownText = delta === 0 ? "Aujourd'hui" : delta === 1 ? "Demain" : `Dans ${delta} jours`;
+
+  const hero = document.createElement('div');
+  hero.className = 'hero';
+  zone.innerHTML = '';
+  zone.appendChild(hero);
+  renderTrip(info, hero);
+}
+
+function renderPickedDay(d){
+  const zone = document.getElementById('pickedDayZone');
+  zone.innerHTML = '';
+  if (!isTrainingDay(d)){
+    const wd = d.getDay();
+    let reason = "Pas d'entraînement ce jour (ni lundi ni mercredi).";
+    if ((wd===1 || wd===3) && inVacances(d)) reason = "Vacances scolaires — pas d'entraînement.";
+    if (stripTime(d) < stripTime(SEASON_START)) reason = "Avant le début de saison.";
+    if (stripTime(d) > stripTime(SEASON_END)) reason = "Après la fin de saison.";
+    zone.innerHTML = `<div class="card"><div class="no-training"><span class="dot"></span>${reason}</div></div>`;
+    return;
+  }
+  const info = getTripInfo(d);
+  info.date = d;
+  const card = document.createElement('div');
+  card.className = 'card';
+  zone.appendChild(card);
+  renderTrip(info, card, {compact:true});
+}
+
+// ---------- Interactions ----------
+const picker = document.getElementById('datePicker');
+let currentPicked = findNextTrainingDay(new Date()) || new Date(SEASON_START);
+
+function toInputValue(d){
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function setPicked(d){
+  currentPicked = stripTime(d);
+  picker.value = toInputValue(currentPicked);
+  renderPickedDay(currentPicked);
+}
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  const p = new Date(currentPicked.getFullYear(), currentPicked.getMonth(), currentPicked.getDate()-1);
+  setPicked(findPrevTrainingDay(p) || p);
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  const n = new Date(currentPicked.getFullYear(), currentPicked.getMonth(), currentPicked.getDate()+1);
+  setPicked(findNextTrainingDay(n) || n);
+});
+picker.addEventListener('change', () => {
+  const parts = picker.value.split('-').map(Number);
+  if (parts.length === 3) setPicked(new Date(parts[0], parts[1]-1, parts[2]));
+});
+
+// Initialisation
+renderNextTrip();
+setPicked(currentPicked);
+fetchOverrides();
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

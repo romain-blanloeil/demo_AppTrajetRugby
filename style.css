@@ -1,0 +1,230 @@
+:root{
+  --pitch:#1B4332;
+  --pitch-deep:#0F2A20;
+  --chalk:#F5F3EC;
+  --ink:#161A16;
+  --ochre:#D4A03C;
+  --sage:#7C9885;
+  --line: rgba(245,243,236,0.16);
+  --card: #21503C;
+}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--pitch);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 64px);
+  color:var(--chalk);
+  font-family:'Inter', sans-serif;
+  min-height:100vh;
+  padding-bottom:48px;
+}
+.wrap{max-width:520px; margin:0 auto; padding:20px 18px 8px;}
+
+/* Header */
+header{padding:22px 4px 18px; position:relative;}
+.eyebrow{
+  font-family:'Space Mono', monospace;
+  font-size:11px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--ochre);
+  margin-bottom:6px;
+}
+h1{
+  font-family:'Oswald', sans-serif;
+  font-weight:700;
+  font-size:34px;
+  letter-spacing:0.01em;
+  text-transform:uppercase;
+  margin:0;
+  line-height:1;
+}
+h1 span{color:var(--ochre);}
+.subtitle{
+  color:var(--sage); 
+  font-size:13px; 
+  margin-top:8px;
+  margin-bottom:12px;
+}
+
+/* Nav */
+nav.tabs{
+  display:flex; gap:6px; margin:18px 0 4px;
+  background:var(--card); border:1px solid var(--line);
+  border-radius:12px; padding:4px;
+}
+nav.tabs a{
+  flex:1; text-align:center;
+  font-family:'Space Mono', monospace;
+  font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase;
+  color:var(--sage); text-decoration:none;
+  padding:9px 4px; border-radius:9px;
+}
+nav.tabs a.active{
+  background:var(--ochre); color:var(--pitch-deep); font-weight:700;
+}
+
+/* touchline divider */
+.touchline{
+  display:flex; gap:6px; margin:20px 0;
+  opacity:0.5;
+}
+.touchline span{flex:1; height:2px; background:var(--chalk); opacity:0.25;}
+
+/* Next match hero */
+.hero{
+  background: linear-gradient(160deg, var(--card), var(--pitch-deep));
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:20px 20px 18px;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";
+  position:absolute; top:-40px; right:-40px;
+  width:140px; height:140px; border-radius:50%;
+  background: radial-gradient(circle, rgba(212,160,60,0.18), transparent 70%);
+}
+.hero-label{
+  font-family:'Space Mono', monospace;
+  font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--ochre); margin-bottom:10px;
+}
+.hero-date{
+  font-family:'Oswald', sans-serif;
+  font-size:26px; font-weight:600; text-transform:capitalize;
+  line-height:1.15;
+}
+.badge-row{display:flex; align-items:center; gap:10px; margin-top:10px;}
+.week-badge{
+  font-family:'Space Mono', monospace;
+  font-size:12px; font-weight:700;
+  background:var(--ochre); color:var(--pitch-deep);
+  border-radius:999px; padding:4px 10px;
+  letter-spacing:0.03em;
+}
+.countdown{font-size:13px; color:var(--sage);}
+
+/* Cartes de trajet */
+
+.trip {
+  margin-top: 14px;
+  border-left: 3px solid var(--ochre);
+  padding: 10px 0 10px 14px;
+  position: relative;
+}
+
+.trip-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--ochre);
+  letter-spacing: 0.05em;
+}
+
+/* Style spécifique pour TOUS les retours (barre et heure en sauge) */
+.trip.retour {
+  border-left-color: var(--sage);
+}
+.trip.retour .trip-time {
+  color: var(--sage);
+}
+
+.trip-title { font-size: 15px; font-weight: 700; margin: 3px 0 2px; }
+.trip-kids { font-size: 12.5px; color: var(--sage); margin-top: 2px; }
+
+/* Badges d'override (modification) */
+.trip-title.has-override {
+  color: #FFF;
+}
+.override-badge {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(212, 160, 60, 0.2);
+  color: var(--ochre);
+  border: 1px solid var(--ochre);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+/* nav / date picker */
+.nav{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:26px; 
+  margin-bottom:16px;
+  gap:10px;
+}
+.nav button{
+  background:var(--card); border:1px solid var(--line); color:var(--chalk);
+  border-radius:10px; padding:10px 14px; font-family:'Inter';
+  font-size:13px; font-weight:600; cursor:pointer;
+}
+.nav button:active{background:var(--pitch-deep);}
+input[type=date]{
+  background:var(--card); border:1px solid var(--line); color:var(--chalk);
+  border-radius:10px; padding:9px 10px; font-family:'Space Mono', monospace; font-size:13px;
+  flex:1;
+  color-scheme: dark;
+}
+
+/* Bloc Goûter harmonisé */
+.snack {
+  margin-top: 14px;
+  border-left: 3px solid var(--ochre);
+  background: rgba(212, 160, 60, 0.08);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px 8px 14px;
+}
+
+.snack-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--ochre);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.snack-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Section & Cards */
+.section-title{
+  font-family:'Oswald', sans-serif;
+  text-transform:uppercase; letter-spacing:0.05em;
+  font-size:13px; color:var(--sage); margin:26px 0 10px 4px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:16px 18px;
+  margin-bottom:12px;
+}
+.card .hero-date{font-size:19px;}
+.card .badge-row{margin-top:8px;}
+.no-training{
+  display:flex; align-items:center; gap:10px;
+  color:var(--sage); font-size:13px; padding:4px 0;
+}
+.no-training .dot{width:6px;height:6px;border-radius:50%;background:var(--sage);}
+
+footer{
+  text-align:center; color:var(--sage); font-size:11px;
+  margin-top:34px; opacity:0.7; line-height:1.6;
+}
+footer a{color:var(--ochre); text-decoration:none;}
+
+@media (prefers-reduced-motion: no-preference){
+  .hero, .card{ animation: rise 0.35s ease-out; }
+  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+}
