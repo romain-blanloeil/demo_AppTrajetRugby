@@ -251,7 +251,7 @@ function renderTrip(info, container, {compact=false} = {}){
   html += `<div class="trip">
     <div class="trip-time">Aller · ${info.aller.time}</div>
     <div class="trip-title ${isOverriddenAller ? 'has-override' : ''}">
-      ${driverAller} ${isOverriddenAller ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+      ${esc(driverAller)} ${isOverriddenAller ? '<span class="override-badge">✏️ Modifié</span>' : ''}
     </div>
     <div class="trip-kids">${info.aller.kids}</div>
   </div>`;
@@ -264,7 +264,7 @@ function renderTrip(info, container, {compact=false} = {}){
     html += `<div class="snack">
       <div class="snack-label">🍪 Goûter</div>
       <div class="snack-title ${isOverriddenGouter ? 'has-override' : ''}">
-        ${childGouter} ${isOverriddenGouter ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+        ${esc(childGouter)} ${isOverriddenGouter ? '<span class="override-badge">✏️ Modifié</span>' : ''}
       </div>
     </div>`;
   }
@@ -277,7 +277,7 @@ function renderTrip(info, container, {compact=false} = {}){
     html += `<div class="trip retour">
       <div class="trip-time">Retour · ${r.time}${r.label ? ' · '+r.label : ''}</div>
       <div class="trip-title ${isOverriddenRetour ? 'has-override' : ''}">
-        ${driverRetour} ${isOverriddenRetour ? '<span class="override-badge">✏️ Modifié</span>' : ''}
+        ${esc(driverRetour)} ${isOverriddenRetour ? '<span class="override-badge">✏️ Modifié</span>' : ''}
       </div>
       <div class="trip-kids">${r.kids}</div>
     </div>`;
